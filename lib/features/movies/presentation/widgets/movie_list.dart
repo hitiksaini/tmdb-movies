@@ -5,7 +5,7 @@ import 'movie_card.dart';
 class MovieList extends StatelessWidget {
   final List<Movie> movies;
   final Function(Movie)? onMovieTap;
-  final Function(Movie)? onBookmarkTap;
+  final Function(Movie, bool)? onBookmarkTap;
   final bool Function(Movie)? isBookmarked;
 
   const MovieList({
@@ -42,7 +42,7 @@ class MovieList extends StatelessWidget {
           movie: movie,
           onTap: () => onMovieTap?.call(movie),
           onBookmark: onBookmarkTap != null
-              ? () => onBookmarkTap!.call(movie)
+              ? (movie, isCurrentlyBookmarked) => onBookmarkTap!.call(movie, isCurrentlyBookmarked)
               : null,
           isBookmarked: isBookmarked?.call(movie) ?? false,
         );

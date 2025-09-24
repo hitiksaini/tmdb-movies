@@ -23,13 +23,28 @@ class MovieRepository implements IMovieRepository {
   @override
   ResultFuture<List<Movie>> getTrendingMovies() async {
     try {
+      // First try to get local data
+      try {
+        final localMovies = await localDataSource.getCachedMovies('trending');
+        // If we have local data, return it immediately
+        if (localMovies.isNotEmpty) {
+          // If we're online, fetch fresh data in background
+          if (await networkInfo.isConnected) {
+            _updateTrendingMoviesInBackground();
+          }
+          return Right(localMovies.map((model) => model.toEntity()).toList());
+        }
+      } on CacheException {
+        // If no local data, continue to fetch from network
+      }
+
+      // If no local data or empty cache, try network
       if (await networkInfo.isConnected) {
         final remoteMovies = await remoteDataSource.getTrendingMovies();
         await localDataSource.cacheMovies('trending', remoteMovies);
         return Right(remoteMovies.map((model) => model.toEntity()).toList());
       } else {
-        final localMovies = await localDataSource.getCachedMovies('trending');
-        return Right(localMovies.map((model) => model.toEntity()).toList());
+        return const Left(NetworkFailure('No internet connection and no cached data available'));
       }
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -37,21 +52,43 @@ class MovieRepository implements IMovieRepository {
       return Left(CacheFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  Future<void> _updateTrendingMoviesInBackground() async {
+    try {
+      final remoteMovies = await remoteDataSource.getTrendingMovies();
+      await localDataSource.cacheMovies('trending', remoteMovies);
+    } catch (_) {
+      // Ignore background update errors
     }
   }
 
   @override
   ResultFuture<List<Movie>> getNowPlayingMovies() async {
     try {
+      // First try to get local data
+      try {
+        final localMovies = await localDataSource.getCachedMovies('now_playing');
+        // If we have local data, return it immediately
+        if (localMovies.isNotEmpty) {
+          // If we're online, fetch fresh data in background
+          if (await networkInfo.isConnected) {
+            _updateNowPlayingMoviesInBackground();
+          }
+          return Right(localMovies.map((model) => model.toEntity()).toList());
+        }
+      } on CacheException {
+        // If no local data, continue to fetch from network
+      }
+
+      // If no local data or empty cache, try network
       if (await networkInfo.isConnected) {
         final remoteMovies = await remoteDataSource.getNowPlayingMovies();
         await localDataSource.cacheMovies('now_playing', remoteMovies);
         return Right(remoteMovies.map((model) => model.toEntity()).toList());
       } else {
-        final localMovies = await localDataSource.getCachedMovies(
-          'now_playing',
-        );
-        return Right(localMovies.map((model) => model.toEntity()).toList());
+        return const Left(NetworkFailure('No internet connection and no cached data available'));
       }
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -62,14 +99,34 @@ class MovieRepository implements IMovieRepository {
     }
   }
 
+  Future<void> _updateNowPlayingMoviesInBackground() async {
+    try {
+      final remoteMovies = await remoteDataSource.getNowPlayingMovies();
+      await localDataSource.cacheMovies('now_playing', remoteMovies);
+    } catch (_) {
+      // Ignore background update errors
+    }
+  }
+
   @override
   ResultFuture<List<Movie>> searchMovies(String query) async {
     try {
+      // First try local search
+      try {
+        final localMovies = await localDataSource.searchLocalMovies(query);
+        if (localMovies.isNotEmpty) {
+          return Right(localMovies.map((model) => model.toEntity()).toList());
+        }
+      } on CacheException {
+        // If local search fails, continue to network search
+      }
+
+      // If no local results or local search failed, try network
       if (await networkInfo.isConnected) {
         final movies = await remoteDataSource.searchMovies(query);
         return Right(movies.map((model) => model.toEntity()).toList());
       } else {
-        return const Left(NetworkFailure('No internet connection'));
+        return const Left(NetworkFailure('No internet connection and no local results found'));
       }
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

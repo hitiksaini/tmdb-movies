@@ -22,7 +22,11 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
   @override
   void initState() {
     super.initState();
-    context.read<MovieBloc>().add(LoadMovieDetailsEvent(widget.movieId));
+    final bloc = context.read<MovieBloc>();
+    final cachedDetails = bloc.detailsState;
+    if (cachedDetails == null || cachedDetails.movie.id != widget.movieId) {
+      bloc.add(LoadMovieDetailsEvent(widget.movieId));
+    }
   }
 
   void _shareMovie(Movie movie) {
@@ -50,10 +54,17 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
     return Scaffold(
       body: BlocBuilder<MovieBloc, MovieState>(
         builder: (context, state) {
-          if (state is MovieLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is MovieDetailsLoaded) {
-            final movie = state.movie;
+          final bloc = context.read<MovieBloc>();
+          MovieDetailsLoaded? cachedState = bloc.detailsState;
+          if (cachedState != null && cachedState.movie.id != widget.movieId) {
+            cachedState = null;
+          }
+          final isLoading =
+              state is MovieLoading && state.tab == MovieTab.details;
+          final isError = state is MovieError && state.tab == MovieTab.details;
+
+          if (cachedState != null) {
+            final movie = cachedState.movie;
             return CustomScrollView(
               slivers: [
                 SliverAppBar(
@@ -67,17 +78,36 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
                       },
                     ),
                     IconButton(
-                      icon: const Icon(Icons.bookmark_border),
+                      icon: Icon(
+                        cachedState.isBookmarked
+                            ? Icons.bookmark
+                            : Icons.bookmark_border,
+                        color: cachedState.isBookmarked
+                            ? Colors.yellow
+                            : Colors.white,
+                      ),
                       onPressed: () {
-                        context.read<MovieBloc>().add(
-                          BookmarkMovieEvent(movie),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Movie bookmarked!'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
+                        if (cachedState!.isBookmarked) {
+                          context.read<MovieBloc>().add(
+                            RemoveBookmarkEvent(movie.id),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Movie removed from bookmarks!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        } else {
+                          context.read<MovieBloc>().add(
+                            BookmarkMovieEvent(movie),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Movie bookmarked!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
                       },
                     ),
                   ],
@@ -202,9 +232,16 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
                     ),
                   ),
                 ),
+                if (cachedState.isLoading || isLoading)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
               ],
             );
-          } else if (state is MovieError) {
+          }
+
+          if (isError) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -212,7 +249,8 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
                   const Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
                   Text(
-                    'Error: ${state.message}',
+                    // ignore: unnecessary_cast
+                    'Error: ${(state as MovieError).message}',
                     style: const TextStyle(color: Colors.red),
                     textAlign: TextAlign.center,
                   ),
@@ -229,7 +267,18 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
               ),
             );
           }
-          return const SizedBox.shrink();
+
+          if (isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.read<MovieBloc>().add(
+              LoadMovieDetailsEvent(widget.movieId),
+            );
+          });
+
+          return const Center(child: CircularProgressIndicator());
         },
       ),
     );

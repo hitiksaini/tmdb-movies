@@ -16,6 +16,7 @@ import '../../features/movies/domain/usecases/search_movies.dart';
 import '../../features/movies/presentation/bloc/movie_bloc.dart';
 import '../constants/app_constants.dart';
 import '../network/network_info.dart';
+import '../network/network_bloc.dart';
 
 final GetIt getIt = GetIt.instance;
 
@@ -70,4 +71,7 @@ Future<void> setupDependencyInjection() async {
       getMovieDetails: getIt(),
     ),
   );
+
+  // Network Bloc
+  getIt.registerLazySingleton(() => NetworkBloc(getIt<Connectivity>()));
 }

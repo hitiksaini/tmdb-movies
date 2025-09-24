@@ -17,7 +17,10 @@ class _BookmarksPageState extends State<BookmarksPage> {
   @override
   void initState() {
     super.initState();
-    context.read<MovieBloc>().add(LoadBookmarkedMoviesEvent());
+    final bloc = context.read<MovieBloc>();
+    if (bloc.bookmarksState == null) {
+      bloc.add(LoadBookmarkedMoviesEvent());
+    }
   }
 
   @override
@@ -26,10 +29,16 @@ class _BookmarksPageState extends State<BookmarksPage> {
       appBar: AppBar(title: const Text('Bookmarked Movies')),
       body: BlocBuilder<MovieBloc, MovieState>(
         builder: (context, state) {
-          if (state is MovieLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is BookmarkedMoviesLoaded) {
-            if (state.movies.isEmpty) {
+          final bloc = context.read<MovieBloc>();
+          final cachedState = bloc.bookmarksState;
+
+          final isLoading =
+              state is MovieLoading && state.tab == MovieTab.bookmarks;
+          final isError =
+              state is MovieError && state.tab == MovieTab.bookmarks;
+
+          if (cachedState != null) {
+            if (cachedState.movies.isEmpty && !cachedState.isLoading) {
               return const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -50,59 +59,77 @@ class _BookmarksPageState extends State<BookmarksPage> {
               );
             }
 
-            return MovieList(
-              movies: state.movies,
-              onMovieTap: (movie) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MovieDetailsPage(movieId: movie.id),
+            return Stack(
+              children: [
+                MovieList(
+                  movies: cachedState.movies,
+                  onMovieTap: (movie) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            MovieDetailsPage(movieId: movie.id),
+                      ),
+                    );
+                  },
+                  onBookmarkTap: (movie, isBookmarked) {
+                    context.read<MovieBloc>().add(
+                      RemoveBookmarkEvent(movie.id),
+                    );
+                  },
+                  isBookmarked: (_) => true,
+                ),
+                if (cachedState.isLoading || isLoading)
+                  const Positioned.fill(
+                    child: IgnorePointer(
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                   ),
-                );
-              },
-              onBookmarkTap: (movie) {
-                context.read<MovieBloc>().add(RemoveBookmarkEvent(movie.id));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Movie removed from bookmarks!'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-                // Reload bookmarks after removal
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  context.read<MovieBloc>().add(LoadBookmarkedMoviesEvent());
-                });
-              },
-              isBookmarked: (_) =>
-                  true, // All movies in bookmarks are bookmarked
-            );
-          } else if (state is MovieError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.grey[600]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error: ${state.message}',
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<MovieBloc>().add(
-                        LoadBookmarkedMoviesEvent(),
-                      );
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
+              ],
             );
           }
-          return const SizedBox.shrink();
+
+          if (isError) {
+            return _buildErrorState(
+              // ignore: unnecessary_cast
+              message: (state as MovieError).message,
+              onRetry: () =>
+                  context.read<MovieBloc>().add(LoadBookmarkedMoviesEvent()),
+            );
+          }
+
+          if (isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.read<MovieBloc>().add(LoadBookmarkedMoviesEvent());
+          });
+
+          return const Center(child: CircularProgressIndicator());
         },
+      ),
+    );
+  }
+
+  Widget _buildErrorState({
+    required String message,
+    required VoidCallback onRetry,
+  }) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: Colors.grey[600]),
+          const SizedBox(height: 16),
+          Text(
+            'Error: $message',
+            style: const TextStyle(color: Colors.red),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
       ),
     );
   }

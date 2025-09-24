@@ -40,15 +40,54 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     on<ClearSearchEvent>(_onClearSearch);
   }
 
+  TrendingMoviesLoaded? _trendingState;
+  NowPlayingMoviesLoaded? _nowPlayingState;
+  SearchMoviesLoaded? _searchState;
+  MovieDetailsLoaded? _detailsState;
+  BookmarkedMoviesLoaded? _bookmarksState;
+
+  TrendingMoviesLoaded? get trendingState => _trendingState;
+  NowPlayingMoviesLoaded? get nowPlayingState => _nowPlayingState;
+  SearchMoviesLoaded? get searchState => _searchState;
+  MovieDetailsLoaded? get detailsState => _detailsState;
+  BookmarkedMoviesLoaded? get bookmarksState => _bookmarksState;
+
+  MoviesTabState? getStateForTab(MovieTab tab) {
+    switch (tab) {
+      case MovieTab.trending:
+        return _trendingState;
+      case MovieTab.nowPlaying:
+        return _nowPlayingState;
+      case MovieTab.search:
+        return _searchState;
+      case MovieTab.details:
+        return _detailsState;
+      case MovieTab.bookmarks:
+        return _bookmarksState;
+    }
+  }
+
   Future<void> _onLoadTrendingMovies(
     LoadTrendingMoviesEvent event,
     Emitter<MovieState> emit,
   ) async {
-    emit(MovieLoading());
+    if (_trendingState != null) {
+      _trendingState = _trendingState!.copyWith(isLoading: true);
+      emit(_trendingState!);
+    } else {
+      emit(MovieLoading(MovieTab.trending));
+    }
+
     final result = await getTrendingMovies();
     result.fold(
-      (failure) => emit(MovieError(failure.message)),
-      (movies) => emit(TrendingMoviesLoaded(movies)),
+      (failure) {
+        final state = MovieError(failure.message, MovieTab.trending);
+        emit(state);
+      },
+      (movies) {
+        _trendingState = TrendingMoviesLoaded(movies);
+        emit(_trendingState!);
+      },
     );
   }
 
@@ -56,11 +95,23 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     LoadNowPlayingMoviesEvent event,
     Emitter<MovieState> emit,
   ) async {
-    emit(MovieLoading());
+    if (_nowPlayingState != null) {
+      _nowPlayingState = _nowPlayingState!.copyWith(isLoading: true);
+      emit(_nowPlayingState!);
+    } else {
+      emit(MovieLoading(MovieTab.nowPlaying));
+    }
+
     final result = await getNowPlayingMovies();
     result.fold(
-      (failure) => emit(MovieError(failure.message)),
-      (movies) => emit(NowPlayingMoviesLoaded(movies)),
+      (failure) {
+        final state = MovieError(failure.message, MovieTab.nowPlaying);
+        emit(state);
+      },
+      (movies) {
+        _nowPlayingState = NowPlayingMoviesLoaded(movies);
+        emit(_nowPlayingState!);
+      },
     );
   }
 
@@ -72,17 +123,33 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
 
     if (event.query.isEmpty) {
       emit(SearchCleared());
+      _searchState = null;
       return;
     }
 
     _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
       if (!emit.isDone) {
-        emit(MovieLoading());
+        if (_searchState != null) {
+          _searchState = _searchState!.copyWith(
+            isLoading: true,
+            query: event.query,
+          );
+          emit(_searchState!);
+        } else {
+          emit(MovieLoading(MovieTab.search));
+        }
+
         final result = await searchMovies(event.query);
         if (!emit.isDone) {
           result.fold(
-            (failure) => emit(MovieError(failure.message)),
-            (movies) => emit(SearchMoviesLoaded(movies, event.query)),
+            (failure) {
+              final state = MovieError(failure.message, MovieTab.search);
+              emit(state);
+            },
+            (movies) {
+              _searchState = SearchMoviesLoaded(movies, event.query);
+              emit(_searchState!);
+            },
           );
         }
       }
@@ -93,49 +160,157 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     LoadMovieDetailsEvent event,
     Emitter<MovieState> emit,
   ) async {
-    emit(MovieLoading());
-    final result = await getMovieDetails(event.movieId);
-    result.fold(
-      (failure) => emit(MovieError(failure.message)),
-      (movie) => emit(MovieDetailsLoaded(movie)),
-    );
+    try {
+      if (_detailsState != null) {
+        _detailsState = _detailsState!.copyWith(isLoading: true);
+        emit(_detailsState!);
+      } else {
+        emit(MovieLoading(MovieTab.details));
+      }
+
+      final result = await getMovieDetails(event.movieId);
+      if (result.isLeft()) {
+        final failure = result.fold((l) => l, (r) => null);
+        if (failure != null) {
+          emit(MovieError(failure.message, MovieTab.details));
+          return;
+        }
+      }
+
+      final movie = result.fold((l) => null, (r) => r);
+      if (movie == null) return;
+
+      final bookmarkResult = await getBookmarkedMovies();
+      final isBookmarked = bookmarkResult.fold(
+        (failure) => false,
+        (bookmarkedMovies) => bookmarkedMovies.any((m) => m.id == movie.id),
+      );
+
+      if (!emit.isDone) {
+        _detailsState = MovieDetailsLoaded(movie, isBookmarked: isBookmarked);
+        emit(_detailsState!);
+      }
+    } catch (e) {
+      if (!emit.isDone) {
+        emit(MovieError(e.toString(), MovieTab.details));
+      }
+    }
   }
 
   Future<void> _onBookmarkMovie(
     BookmarkMovieEvent event,
     Emitter<MovieState> emit,
   ) async {
-    final result = await bookmarkMovie(event.movie);
-    result.fold(
-      (failure) => emit(MovieError(failure.message)),
-      (_) {
-        // Show a snackbar for feedback
-      },
-    );
+    try {
+      final previousState = state;
+
+      final result = await bookmarkMovie(event.movie);
+      if (result.isLeft()) {
+        final failure = result.fold((l) => l, (r) => null);
+        if (failure != null && !emit.isDone) {
+          emit(MovieError(failure.message, MovieTab.bookmarks));
+          return;
+        }
+      }
+
+      final bookmarksResult = await getBookmarkedMovies();
+      if (!emit.isDone) {
+        bookmarksResult.fold(
+          (failure) => emit(MovieError(failure.message, MovieTab.bookmarks)),
+          (movies) {
+            _bookmarksState = BookmarkedMoviesLoaded(movies);
+            emit(_bookmarksState!);
+          },
+        );
+      }
+
+      if (_detailsState != null &&
+          _detailsState!.movie.id == event.movie.id &&
+          !emit.isDone) {
+        _detailsState = _detailsState!.copyWith(isBookmarked: true);
+        emit(_detailsState!);
+      }
+
+      if (!emit.isDone) {
+        if (previousState is TrendingMoviesLoaded) {
+          emit(previousState);
+        } else if (previousState is NowPlayingMoviesLoaded) {
+          emit(previousState);
+        }
+      }
+    } catch (e) {
+      if (!emit.isDone) {
+        emit(MovieError(e.toString(), MovieTab.bookmarks));
+      }
+    }
   }
 
   Future<void> _onRemoveBookmark(
     RemoveBookmarkEvent event,
     Emitter<MovieState> emit,
   ) async {
-    final result = await removeBookmark(event.movieId);
-    result.fold(
-      (failure) => emit(MovieError(failure.message)),
-      (_) {
-        //  Handle the removal feedback
-      },
-    );
+    try {
+      final previousState = state;
+
+      final result = await removeBookmark(event.movieId);
+      if (result.isLeft()) {
+        final failure = result.fold((l) => l, (r) => null);
+        if (failure != null && !emit.isDone) {
+          emit(MovieError(failure.message, MovieTab.bookmarks));
+          return;
+        }
+      }
+
+      final bookmarksResult = await getBookmarkedMovies();
+      if (!emit.isDone) {
+        bookmarksResult.fold(
+          (failure) => emit(MovieError(failure.message, MovieTab.bookmarks)),
+          (movies) {
+            _bookmarksState = BookmarkedMoviesLoaded(movies);
+            emit(_bookmarksState!);
+          },
+        );
+      }
+
+      if (_detailsState != null &&
+          _detailsState!.movie.id == event.movieId &&
+          !emit.isDone) {
+        _detailsState = _detailsState!.copyWith(isBookmarked: false);
+        emit(_detailsState!);
+      }
+
+      if (!emit.isDone) {
+        if (previousState is TrendingMoviesLoaded) {
+          emit(previousState);
+        } else if (previousState is NowPlayingMoviesLoaded) {
+          emit(previousState);
+        }
+      }
+    } catch (e) {
+      if (!emit.isDone) {
+        emit(MovieError(e.toString(), MovieTab.bookmarks));
+      }
+    }
   }
 
   Future<void> _onLoadBookmarkedMovies(
     LoadBookmarkedMoviesEvent event,
     Emitter<MovieState> emit,
   ) async {
-    emit(MovieLoading());
+    if (_bookmarksState != null) {
+      _bookmarksState = _bookmarksState!.copyWith(isLoading: true);
+      emit(_bookmarksState!);
+    } else {
+      emit(MovieLoading(MovieTab.bookmarks));
+    }
+
     final result = await getBookmarkedMovies();
     result.fold(
-      (failure) => emit(MovieError(failure.message)),
-      (movies) => emit(BookmarkedMoviesLoaded(movies)),
+      (failure) => emit(MovieError(failure.message, MovieTab.bookmarks)),
+      (movies) {
+        _bookmarksState = BookmarkedMoviesLoaded(movies);
+        emit(_bookmarksState!);
+      },
     );
   }
 

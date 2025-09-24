@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:tmdb_movies/features/home/home_page.dart';
 import 'core/di/dependency_injection.dart';
+import 'core/network/network_bloc.dart';
 import 'features/movies/presentation/bloc/movie_bloc.dart';
 
 void main() async {
@@ -20,6 +21,7 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<MovieBloc>(create: (context) => getIt<MovieBloc>()),
+        BlocProvider<NetworkBloc>(create: (context) => getIt<NetworkBloc>()),
       ],
       child: MaterialApp(
         title: 'TmDB Movies - Hitik',

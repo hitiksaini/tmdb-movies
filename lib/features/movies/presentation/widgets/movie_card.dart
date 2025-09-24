@@ -7,7 +7,7 @@ import '../../domain/entities/movie.dart';
 class MovieCard extends StatelessWidget {
   final Movie movie;
   final VoidCallback? onTap;
-  final VoidCallback? onBookmark;
+  final Function(Movie movie, bool isCurrentlyBookmarked)? onBookmark;
   final bool isBookmarked;
 
   const MovieCard({
@@ -41,8 +41,9 @@ class MovieCard extends StatelessWidget {
                                 '${ApiConstants.imageBaseUrl}${movie.posterPath}',
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            placeholder: (context, url) =>
-                                const Center(child: CircularProgressIndicator()),
+                            placeholder: (context, url) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                             errorWidget: (context, url, error) => Container(
                               color: Colors.grey[800],
                               child: const Icon(
@@ -66,11 +67,25 @@ class MovieCard extends StatelessWidget {
                       top: 8,
                       right: 8,
                       child: GestureDetector(
-                        onTap: onBookmark,
+                        onTap: () {
+                          if (onBookmark != null) {
+                            onBookmark!(movie, isBookmarked);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isBookmarked
+                                      ? 'Movie removed from bookmarks!'
+                                      : 'Movie bookmarked!',
+                                ),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.7),
+                            color: Colors.black.withValues(alpha: 0.7),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Icon(

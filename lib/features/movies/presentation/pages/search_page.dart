@@ -26,44 +26,64 @@ class SearchPage extends StatelessWidget {
           Expanded(
             child: BlocBuilder<MovieBloc, MovieState>(
               builder: (context, state) {
-                if (state is MovieLoading) {
+                final bloc = context.read<MovieBloc>();
+                final cachedState = bloc.searchState;
+                final bookmarks = bloc.bookmarksState?.movies ?? [];
+                final isLoading =
+                    state is MovieLoading && state.tab == MovieTab.search;
+                final isError =
+                    state is MovieError && state.tab == MovieTab.search;
+
+                if (cachedState != null && cachedState.movies.isNotEmpty) {
+                  return Stack(
+                    children: [
+                      MovieList(
+                        movies: cachedState.movies,
+                        onMovieTap: (movie) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  MovieDetailsPage(movieId: movie.id),
+                            ),
+                          );
+                        },
+                        onBookmarkTap: (movie, isBookmarked) {
+                          if (isBookmarked) {
+                            context.read<MovieBloc>().add(
+                              RemoveBookmarkEvent(movie.id),
+                            );
+                          } else {
+                            context.read<MovieBloc>().add(
+                              BookmarkMovieEvent(movie),
+                            );
+                          }
+                        },
+                        isBookmarked: (movie) =>
+                            bookmarks.any((m) => m.id == movie.id),
+                      ),
+                      if (cachedState.isLoading || isLoading)
+                        const Positioned.fill(
+                          child: IgnorePointer(
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                        ),
+                    ],
+                  );
+                }
+
+                if (isError) {
+                  return _buildErrorState(
+                    // ignore: unnecessary_cast
+                    message: (state as MovieError).message,
+                  );
+                }
+
+                if (isLoading) {
                   return const Center(child: CircularProgressIndicator());
-                } else if (state is SearchMoviesLoaded) {
-                  return MovieList(
-                    movies: state.movies,
-                    onMovieTap: (movie) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              MovieDetailsPage(movieId: movie.id),
-                        ),
-                      );
-                    },
-                    onBookmarkTap: (movie) {
-                      context.read<MovieBloc>().add(BookmarkMovieEvent(movie));
-                    },
-                  );
-                } else if (state is MovieError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: Colors.grey[600],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error: ${state.message}',
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                } else if (state is SearchCleared) {
+                }
+
+                if (cachedState != null && cachedState.movies.isEmpty) {
                   return const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -78,6 +98,7 @@ class SearchPage extends StatelessWidget {
                     ),
                   );
                 }
+
                 return const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -93,6 +114,23 @@ class SearchPage extends StatelessWidget {
                 );
               },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState({required String message}) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: Colors.grey[600]),
+          const SizedBox(height: 16),
+          Text(
+            'Error: $message',
+            style: const TextStyle(color: Colors.red),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

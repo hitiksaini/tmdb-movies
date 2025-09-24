@@ -11,6 +11,7 @@ abstract class MovieLocalDataSource {
   Future<List<MovieModel>> getBookmarkedMovies();
   Future<bool> isMovieBookmarked(int movieId);
   Future<void> clearCache();
+  Future<List<MovieModel>> searchLocalMovies(String query);
 }
 
 class MovieLocalDataSourceImpl implements MovieLocalDataSource {
@@ -96,6 +97,53 @@ class MovieLocalDataSourceImpl implements MovieLocalDataSource {
       await movieBox.clear();
     } catch (e) {
       throw CacheException('Failed to clear cache: $e');
+    }
+  }
+
+  @override
+  Future<List<MovieModel>> searchLocalMovies(String query) async {
+    try {
+      final searchResults = <MovieModel>[];
+      final lowercaseQuery = query.toLowerCase();
+
+      // Search -- trending movies
+      try {
+        final trendingMovies = await getCachedMovies('trending');
+        searchResults.addAll(
+          trendingMovies.where(
+            (movie) =>
+                movie.title.toLowerCase().contains(lowercaseQuery) ||
+                (movie.overview?.toLowerCase().contains(lowercaseQuery) ??
+                    false),
+          ),
+        );
+      } catch (_) {}
+
+      // Search -- now playing movies
+      try {
+        final nowPlayingMovies = await getCachedMovies('now_playing');
+        searchResults.addAll(
+          nowPlayingMovies.where(
+            (movie) =>
+                movie.title.toLowerCase().contains(lowercaseQuery) ||
+                (movie.overview?.toLowerCase().contains(lowercaseQuery) ??
+                    false),
+          ),
+        );
+      } catch (_) {}
+
+      final uniqueResults = <MovieModel>[];
+      final seenIds = <int>{};
+      for (final movie in searchResults) {
+        if (!seenIds.contains(movie.id)) {
+          uniqueResults.add(movie);
+          seenIds.add(movie.id);
+        }
+      }
+
+      return uniqueResults;
+    } catch (e) {
+      throw CacheException('Failed to search local movies: $e');
     }
   }
 }

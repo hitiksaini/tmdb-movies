@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/network/network_bloc.dart';
 import '../movies/presentation/bloc/movie_bloc.dart';
 import '../movies/presentation/bloc/movie_event.dart';
 import '../movies/presentation/bloc/movie_state.dart';
@@ -26,24 +27,90 @@ class _HomePageState extends State<HomePage>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabTitles.length, vsync: this);
+    _tabController.addListener(_handleTabControllerChange);
     _loadInitialData();
   }
 
+  void _handleTabControllerChange() {
+    if (!_tabController.indexIsChanging) {
+      setState(() {
+        _currentIndex = _tabController.index;
+      });
+      _handleTabChange(_tabController.index);
+    }
+  }
+
   void _loadInitialData() {
-    context.read<MovieBloc>().add(LoadTrendingMoviesEvent());
+    final bloc = context.read<MovieBloc>();
+    bloc.add(LoadTrendingMoviesEvent());
+    bloc.add(LoadBookmarkedMoviesEvent());
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabControllerChange);
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final state = context.read<MovieBloc>().state;
+    if (state is! TrendingMoviesLoaded && state is! NowPlayingMoviesLoaded) {
+      _handleTabChange(_currentIndex);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_tabTitles[_currentIndex]),
+        titleSpacing: 24,
+        title: Row(
+          children: [
+            Text(_tabTitles[_currentIndex]),
+            BlocBuilder<NetworkBloc, NetworkState>(
+              builder: (context, networkState) {
+                return Container(
+                  margin: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: networkState.isConnected
+                        ? Colors.green[800]
+                        : Colors.grey[800],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        networkState.isConnected ? Icons.wifi : Icons.wifi_off,
+                        size: 16,
+                        color: networkState.isConnected
+                            ? Colors.green[200]
+                            : Colors.grey[400],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        networkState.isConnected ? 'Online' : 'Offline',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: networkState.isConnected
+                              ? Colors.green[200]
+                              : Colors.grey[400],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: false,
@@ -85,45 +152,70 @@ class _HomePageState extends State<HomePage>
   Widget _buildTrendingTab() {
     return BlocBuilder<MovieBloc, MovieState>(
       builder: (context, state) {
-        if (state is MovieLoading) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state is TrendingMoviesLoaded) {
-          return MovieList(
-            movies: state.movies,
-            onMovieTap: (movie) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MovieDetailsPage(movieId: movie.id),
+        final bloc = context.read<MovieBloc>();
+        final cachedState = bloc.trendingState;
+        final bookmarks = bloc.bookmarksState?.movies ?? [];
+        final isLoading =
+            state is MovieLoading && state.tab == MovieTab.trending;
+        final isError = state is MovieError && state.tab == MovieTab.trending;
+
+        if (cachedState != null && cachedState.movies.isNotEmpty) {
+          return Stack(
+            children: [
+              MovieList(
+                movies: cachedState.movies,
+                onMovieTap: (movie) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MovieDetailsPage(movieId: movie.id),
+                    ),
+                  );
+                },
+                onBookmarkTap: (movie, isCurrentlyBookmarked) {
+                  if (isCurrentlyBookmarked) {
+                    context.read<MovieBloc>().add(
+                      RemoveBookmarkEvent(movie.id),
+                    );
+                  } else {
+                    context.read<MovieBloc>().add(BookmarkMovieEvent(movie));
+                  }
+                },
+                isBookmarked: (movie) => bookmarks.any((m) => m.id == movie.id),
+              ),
+              if (cachedState.isLoading || isLoading)
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
                 ),
-              );
-            },
-            onBookmarkTap: (movie) {
-              context.read<MovieBloc>().add(BookmarkMovieEvent(movie));
-            },
-          );
-        } else if (state is MovieError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Error: ${state.message}',
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    context.read<MovieBloc>().add(LoadTrendingMoviesEvent());
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
+            ],
           );
         }
-        return const SizedBox.shrink();
+
+        if (isError) {
+          // ignore: unnecessary_cast
+          final message = (state as MovieError).message;
+          return _buildErrorState(
+            message: message,
+            onRetry: () =>
+                context.read<MovieBloc>().add(LoadTrendingMoviesEvent()),
+          );
+        }
+
+        if (isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (cachedState != null && cachedState.movies.isEmpty) {
+          return _buildEmptyState('No movies found');
+        }
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.read<MovieBloc>().add(LoadTrendingMoviesEvent());
+        });
+
+        return const Center(child: CircularProgressIndicator());
       },
     );
   }
@@ -131,59 +223,117 @@ class _HomePageState extends State<HomePage>
   Widget _buildNowPlayingTab() {
     return BlocBuilder<MovieBloc, MovieState>(
       builder: (context, state) {
-        if (state is MovieLoading) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state is NowPlayingMoviesLoaded) {
-          return MovieList(
-            movies: state.movies,
-            onMovieTap: (movie) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MovieDetailsPage(movieId: movie.id),
+        final bloc = context.read<MovieBloc>();
+        final cachedState = bloc.nowPlayingState;
+        final bookmarks = bloc.bookmarksState?.movies ?? [];
+        final isLoading =
+            state is MovieLoading && state.tab == MovieTab.nowPlaying;
+        final isError = state is MovieError && state.tab == MovieTab.nowPlaying;
+
+        if (cachedState != null && cachedState.movies.isNotEmpty) {
+          return Stack(
+            children: [
+              MovieList(
+                movies: cachedState.movies,
+                onMovieTap: (movie) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MovieDetailsPage(movieId: movie.id),
+                    ),
+                  );
+                },
+                onBookmarkTap: (movie, isCurrentlyBookmarked) {
+                  if (isCurrentlyBookmarked) {
+                    context.read<MovieBloc>().add(
+                      RemoveBookmarkEvent(movie.id),
+                    );
+                  } else {
+                    context.read<MovieBloc>().add(BookmarkMovieEvent(movie));
+                  }
+                },
+                isBookmarked: (movie) => bookmarks.any((m) => m.id == movie.id),
+              ),
+              if (cachedState.isLoading || isLoading)
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
                 ),
-              );
-            },
-            onBookmarkTap: (movie) {
-              context.read<MovieBloc>().add(BookmarkMovieEvent(movie));
-            },
-          );
-        } else if (state is MovieError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Error: ${state.message}',
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    context.read<MovieBloc>().add(LoadNowPlayingMoviesEvent());
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
+            ],
           );
         }
-        return const SizedBox.shrink();
+
+        if (isError) {
+          // ignore: unnecessary_cast
+          final message = (state as MovieError).message;
+          return _buildErrorState(
+            message: message,
+            onRetry: () =>
+                context.read<MovieBloc>().add(LoadNowPlayingMoviesEvent()),
+          );
+        }
+
+        if (isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (cachedState != null && cachedState.movies.isEmpty) {
+          return _buildEmptyState('No movies found');
+        }
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.read<MovieBloc>().add(LoadNowPlayingMoviesEvent());
+        });
+
+        return const Center(child: CircularProgressIndicator());
       },
     );
   }
 
+  Widget _buildErrorState({
+    required String message,
+    required VoidCallback onRetry,
+  }) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Error: $message',
+            style: const TextStyle(color: Colors.red),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Text(
+        message,
+        style: const TextStyle(fontSize: 18, color: Colors.grey),
+      ),
+    );
+  }
+
   void _handleTabChange(int index) {
+    final currentState = context.read<MovieBloc>().state;
     switch (index) {
       case 0:
-        context.read<MovieBloc>().add(LoadTrendingMoviesEvent());
+        if (currentState is! TrendingMoviesLoaded) {
+          context.read<MovieBloc>().add(LoadTrendingMoviesEvent());
+        }
         break;
       case 1:
-        context.read<MovieBloc>().add(LoadNowPlayingMoviesEvent());
+        if (currentState is! NowPlayingMoviesLoaded) {
+          context.read<MovieBloc>().add(LoadNowPlayingMoviesEvent());
+        }
         break;
-      case 3:
-        context.read<MovieBloc>().add(LoadBookmarkedMoviesEvent());
+      case 2:
         break;
     }
   }
