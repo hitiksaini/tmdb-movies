@@ -2,7 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../domain/entities/movie.dart';
 import '../bloc/movie_bloc.dart';
 import '../bloc/movie_event.dart';
 import '../bloc/movie_state.dart';
@@ -23,6 +25,26 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
     context.read<MovieBloc>().add(LoadMovieDetailsEvent(widget.movieId));
   }
 
+  void _shareMovie(Movie movie) {
+    final deepLink = 'tmdbmovies://movie/${movie.id}';
+    final shareText =
+        '''
+        🎬 ${movie.title}
+
+        ${movie.overview ?? 'No overview available'}
+
+        ⭐ Rating: ${movie.voteAverage.toStringAsFixed(1)}/10
+        📅 Released: ${movie.releaseDate ?? 'Unknown'}
+
+        Check out this movie in the TmDB Movies app!
+        Deep link: $deepLink
+
+        #Movies #TmDB
+        ''';
+
+    Share.share(shareText, subject: 'Check out this movie: ${movie.title}');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,7 +63,7 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
                     IconButton(
                       icon: const Icon(Icons.share),
                       onPressed: () {
-                        // TODO - later
+                        _shareMovie(movie);
                       },
                     ),
                     IconButton(
@@ -60,19 +82,28 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
                     ),
                   ],
                   flexibleSpace: FlexibleSpaceBar(
-                    background: CachedNetworkImage(
-                      imageUrl:
-                          '${ApiConstants.imageBaseUrl}${movie.backdropPath}',
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[800],
-                        child: const Icon(
-                          Icons.movie,
-                          size: 100,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
+                    background: movie.backdropPath != null
+                        ? CachedNetworkImage(
+                            imageUrl:
+                                '${ApiConstants.imageBaseUrl}${movie.backdropPath}',
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[800],
+                              child: const Icon(
+                                Icons.movie,
+                                size: 100,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: Colors.grey[800],
+                            child: const Icon(
+                              Icons.movie,
+                              size: 100,
+                              color: Colors.grey,
+                            ),
+                          ),
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -91,7 +122,7 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Released: ${movie.releaseDate}',
+                          'Released: ${movie.releaseDate ?? 'Unknown'}',
                           style: const TextStyle(
                             fontSize: 16,
                             color: Colors.grey,
@@ -137,7 +168,7 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          movie.overview,
+                          movie.overview ?? 'No overview available',
                           style: const TextStyle(
                             fontSize: 16,
                             color: Colors.grey,

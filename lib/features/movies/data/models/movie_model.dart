@@ -14,19 +14,19 @@ class MovieModel {
   final String title;
 
   @HiveField(2)
-  final String overview;
+  final String? overview;
 
   @HiveField(3)
   @JsonKey(name: 'poster_path')
-  final String posterPath;
+  final String? posterPath;
 
   @HiveField(4)
   @JsonKey(name: 'backdrop_path')
-  final String backdropPath;
+  final String? backdropPath;
 
   @HiveField(5)
   @JsonKey(name: 'release_date')
-  final String releaseDate;
+  final String? releaseDate;
 
   @HiveField(6)
   @JsonKey(name: 'vote_average')
@@ -38,7 +38,7 @@ class MovieModel {
 
   @HiveField(8)
   @JsonKey(name: 'genre_ids')
-  final List<int> genreIds;
+  final List<int>? genreIds;
 
   @HiveField(9)
   final bool adult;
@@ -60,13 +60,13 @@ class MovieModel {
   const MovieModel({
     required this.id,
     required this.title,
-    required this.overview,
-    required this.posterPath,
-    required this.backdropPath,
-    required this.releaseDate,
+    this.overview,
+    this.posterPath,
+    this.backdropPath,
+    this.releaseDate,
     required this.voteAverage,
     required this.voteCount,
-    required this.genreIds,
+    this.genreIds,
     required this.adult,
     required this.originalLanguage,
     required this.originalTitle,

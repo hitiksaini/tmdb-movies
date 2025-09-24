@@ -11,6 +11,7 @@ import '../../features/movies/domain/usecases/get_bookmarked_movies.dart';
 import '../../features/movies/domain/usecases/get_movie_details.dart';
 import '../../features/movies/domain/usecases/get_now_playing_movies.dart';
 import '../../features/movies/domain/usecases/get_trending_movies.dart';
+import '../../features/movies/domain/usecases/remove_bookmark.dart';
 import '../../features/movies/domain/usecases/search_movies.dart';
 import '../../features/movies/presentation/bloc/movie_bloc.dart';
 import '../constants/app_constants.dart';
@@ -53,6 +54,7 @@ Future<void> setupDependencyInjection() async {
   getIt.registerLazySingleton(() => GetNowPlayingMovies(getIt()));
   getIt.registerLazySingleton(() => SearchMovies(getIt()));
   getIt.registerLazySingleton(() => BookmarkMovie(getIt()));
+  getIt.registerLazySingleton(() => RemoveBookmark(getIt()));
   getIt.registerLazySingleton(() => GetBookmarkedMovies(getIt()));
   getIt.registerLazySingleton(() => GetMovieDetails(getIt()));
 
@@ -63,6 +65,7 @@ Future<void> setupDependencyInjection() async {
       getNowPlayingMovies: getIt(),
       searchMovies: getIt(),
       bookmarkMovie: getIt(),
+      removeBookmark: getIt(),
       getBookmarkedMovies: getIt(),
       getMovieDetails: getIt(),
     ),

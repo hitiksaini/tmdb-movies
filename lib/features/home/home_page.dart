@@ -20,12 +20,7 @@ class _HomePageState extends State<HomePage>
   late TabController _tabController;
   int _currentIndex = 0;
 
-  final List<String> _tabTitles = [
-    'Trending',
-    'Now Playing',
-    'Search',
-    'Bookmarks',
-  ];
+  final List<String> _tabTitles = ['Trending', 'Now Playing', 'Search'];
 
   @override
   void initState() {
@@ -63,6 +58,18 @@ class _HomePageState extends State<HomePage>
           },
           tabs: _tabTitles.map((title) => Tab(text: title)).toList(),
         ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => BookmarksPage()),
+              );
+            },
+            icon: Icon(Icons.bookmark_added_outlined),
+          ),
+        ],
+        actionsPadding: EdgeInsets.symmetric(horizontal: 12),
       ),
       body: TabBarView(
         controller: _tabController,
@@ -70,7 +77,6 @@ class _HomePageState extends State<HomePage>
           _buildTrendingTab(),
           _buildNowPlayingTab(),
           const SearchPage(),
-          const BookmarksPage(),
         ],
       ),
     );

@@ -22,10 +22,7 @@ class MovieList extends StatelessWidget {
       return const Center(
         child: Text(
           'No movies found',
-          style: TextStyle(
-            fontSize: 18,
-            color: Colors.grey,
-          ),
+          style: TextStyle(fontSize: 18, color: Colors.grey),
         ),
       );
     }
@@ -44,7 +41,7 @@ class MovieList extends StatelessWidget {
         return MovieCard(
           movie: movie,
           onTap: () => onMovieTap?.call(movie),
-          onBookmark: onBookmarkTap != null 
+          onBookmark: onBookmarkTap != null
               ? () => onBookmarkTap!.call(movie)
               : null,
           isBookmarked: isBookmarked?.call(movie) ?? false,

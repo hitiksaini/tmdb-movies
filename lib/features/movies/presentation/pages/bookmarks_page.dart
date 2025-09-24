@@ -23,6 +23,7 @@ class _BookmarksPageState extends State<BookmarksPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('Bookmarked Movies')),
       body: BlocBuilder<MovieBloc, MovieState>(
         builder: (context, state) {
           if (state is MovieLoading) {
@@ -33,26 +34,16 @@ class _BookmarksPageState extends State<BookmarksPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.bookmark_border,
-                      size: 64,
-                      color: Colors.grey,
-                    ),
+                    Icon(Icons.bookmark_border, size: 64, color: Colors.grey),
                     SizedBox(height: 16),
                     Text(
                       'No bookmarked movies',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 18, color: Colors.grey),
                     ),
                     SizedBox(height: 8),
                     Text(
                       'Bookmark movies to see them here',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                   ],
                 ),
@@ -71,23 +62,26 @@ class _BookmarksPageState extends State<BookmarksPage> {
               },
               onBookmarkTap: (movie) {
                 context.read<MovieBloc>().add(RemoveBookmarkEvent(movie.id));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Movie removed from bookmarks!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
                 // Reload bookmarks after removal
                 Future.delayed(const Duration(milliseconds: 500), () {
                   context.read<MovieBloc>().add(LoadBookmarkedMoviesEvent());
                 });
               },
-              isBookmarked: (_) => true, // All movies in bookmarks are bookmarked
+              isBookmarked: (_) =>
+                  true, // All movies in bookmarks are bookmarked
             );
           } else if (state is MovieError) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.grey[600],
-                  ),
+                  Icon(Icons.error_outline, size: 64, color: Colors.grey[600]),
                   const SizedBox(height: 16),
                   Text(
                     'Error: ${state.message}',
@@ -97,7 +91,9 @@ class _BookmarksPageState extends State<BookmarksPage> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      context.read<MovieBloc>().add(LoadBookmarkedMoviesEvent());
+                      context.read<MovieBloc>().add(
+                        LoadBookmarkedMoviesEvent(),
+                      );
                     },
                     child: const Text('Retry'),
                   ),

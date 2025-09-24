@@ -4,6 +4,7 @@ import '../../domain/usecases/get_trending_movies.dart';
 import '../../domain/usecases/get_now_playing_movies.dart';
 import '../../domain/usecases/search_movies.dart';
 import '../../domain/usecases/bookmark_movie.dart';
+import '../../domain/usecases/remove_bookmark.dart';
 import '../../domain/usecases/get_bookmarked_movies.dart';
 import '../../domain/usecases/get_movie_details.dart';
 import 'movie_event.dart';
@@ -14,6 +15,7 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
   final GetNowPlayingMovies getNowPlayingMovies;
   final SearchMovies searchMovies;
   final BookmarkMovie bookmarkMovie;
+  final RemoveBookmark removeBookmark;
   final GetBookmarkedMovies getBookmarkedMovies;
   final GetMovieDetails getMovieDetails;
 
@@ -24,6 +26,7 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     required this.getNowPlayingMovies,
     required this.searchMovies,
     required this.bookmarkMovie,
+    required this.removeBookmark,
     required this.getBookmarkedMovies,
     required this.getMovieDetails,
   }) : super(MovieInitial()) {
@@ -73,12 +76,16 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     }
 
     _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
-      emit(MovieLoading());
-      final result = await searchMovies(event.query);
-      result.fold(
-        (failure) => emit(MovieError(failure.message)),
-        (movies) => emit(SearchMoviesLoaded(movies, event.query)),
-      );
+      if (!emit.isDone) {
+        emit(MovieLoading());
+        final result = await searchMovies(event.query);
+        if (!emit.isDone) {
+          result.fold(
+            (failure) => emit(MovieError(failure.message)),
+            (movies) => emit(SearchMoviesLoaded(movies, event.query)),
+          );
+        }
+      }
     });
   }
 
@@ -101,7 +108,9 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     final result = await bookmarkMovie(event.movie);
     result.fold(
       (failure) => emit(MovieError(failure.message)),
-      (_) => emit(MovieBookmarked()),
+      (_) {
+        // Show a snackbar for feedback
+      },
     );
   }
 
@@ -109,8 +118,13 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     RemoveBookmarkEvent event,
     Emitter<MovieState> emit,
   ) async {
-    // Implementation for remove bookmark
-    emit(BookmarkRemoved());
+    final result = await removeBookmark(event.movieId);
+    result.fold(
+      (failure) => emit(MovieError(failure.message)),
+      (_) {
+        //  Handle the removal feedback
+      },
+    );
   }
 
   Future<void> _onLoadBookmarkedMovies(
