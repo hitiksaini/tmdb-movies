@@ -44,7 +44,11 @@ class MovieRepository implements IMovieRepository {
         await localDataSource.cacheMovies('trending', remoteMovies);
         return Right(remoteMovies.map((model) => model.toEntity()).toList());
       } else {
-        return const Left(NetworkFailure('No internet connection and no cached data available'));
+        return const Left(
+          NetworkFailure(
+            'No internet connection and no cached data available (The API is blocked on jio networks)',
+          ),
+        );
       }
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -69,7 +73,9 @@ class MovieRepository implements IMovieRepository {
     try {
       // First try to get local data
       try {
-        final localMovies = await localDataSource.getCachedMovies('now_playing');
+        final localMovies = await localDataSource.getCachedMovies(
+          'now_playing',
+        );
         // If we have local data, return it immediately
         if (localMovies.isNotEmpty) {
           // If we're online, fetch fresh data in background
@@ -88,7 +94,11 @@ class MovieRepository implements IMovieRepository {
         await localDataSource.cacheMovies('now_playing', remoteMovies);
         return Right(remoteMovies.map((model) => model.toEntity()).toList());
       } else {
-        return const Left(NetworkFailure('No internet connection and no cached data available'));
+        return const Left(
+          NetworkFailure(
+            'No internet connection and no cached data available (The API is blocked on jio networks)',
+          ),
+        );
       }
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -126,7 +136,9 @@ class MovieRepository implements IMovieRepository {
         final movies = await remoteDataSource.searchMovies(query);
         return Right(movies.map((model) => model.toEntity()).toList());
       } else {
-        return const Left(NetworkFailure('No internet connection and no local results found'));
+        return const Left(
+          NetworkFailure('No internet connection and no local results found'),
+        );
       }
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

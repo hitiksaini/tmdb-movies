@@ -44,7 +44,7 @@ class SearchPage extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  MovieDetailsPage(movieId: movie.id),
+                              MovieDetailsPage(movie: movie),
                             ),
                           );
                         },

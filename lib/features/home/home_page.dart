@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../core/network/network_bloc.dart';
 import '../movies/presentation/bloc/movie_bloc.dart';
 import '../movies/presentation/bloc/movie_event.dart';
 import '../movies/presentation/bloc/movie_state.dart';
@@ -67,50 +66,7 @@ class _HomePageState extends State<HomePage>
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 24,
-        title: Row(
-          children: [
-            Text(_tabTitles[_currentIndex]),
-            BlocBuilder<NetworkBloc, NetworkState>(
-              builder: (context, networkState) {
-                return Container(
-                  margin: const EdgeInsets.only(left: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: networkState.isConnected
-                        ? Colors.green[800]
-                        : Colors.grey[800],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        networkState.isConnected ? Icons.wifi : Icons.wifi_off,
-                        size: 16,
-                        color: networkState.isConnected
-                            ? Colors.green[200]
-                            : Colors.grey[400],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        networkState.isConnected ? 'Online' : 'Offline',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: networkState.isConnected
-                              ? Colors.green[200]
-                              : Colors.grey[400],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+        title: Row(children: [Text(_tabTitles[_currentIndex])]),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: false,
@@ -168,7 +124,7 @@ class _HomePageState extends State<HomePage>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => MovieDetailsPage(movieId: movie.id),
+                      builder: (context) => MovieDetailsPage(movie: movie),
                     ),
                   );
                 },
@@ -239,7 +195,7 @@ class _HomePageState extends State<HomePage>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => MovieDetailsPage(movieId: movie.id),
+                      builder: (context) => MovieDetailsPage(movie: movie),
                     ),
                   );
                 },

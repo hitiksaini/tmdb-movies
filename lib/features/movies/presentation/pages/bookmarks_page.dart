@@ -68,7 +68,7 @@ class _BookmarksPageState extends State<BookmarksPage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            MovieDetailsPage(movieId: movie.id),
+                            MovieDetailsPage(movie: movie),
                       ),
                     );
                   },

@@ -39,6 +39,15 @@ class LoadMovieDetailsEvent extends MovieEvent {
   List<Object?> get props => [movieId];
 }
 
+class PrimeMovieDetailsEvent extends MovieEvent {
+  final Movie movie;
+
+  const PrimeMovieDetailsEvent(this.movie);
+
+  @override
+  List<Object?> get props => [movie];
+}
+
 class BookmarkMovieEvent extends MovieEvent {
   final Movie movie;
 

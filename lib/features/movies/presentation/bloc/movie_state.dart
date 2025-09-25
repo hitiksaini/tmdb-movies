@@ -156,6 +156,7 @@ class MovieDetailsLoaded extends MoviesTabState {
     this.isBookmarked = false,
     super.isLoading,
     super.error,
+    super.isFromCache,
   }) : super(tab: MovieTab.details);
 
   @override
@@ -174,6 +175,7 @@ class MovieDetailsLoaded extends MoviesTabState {
       isBookmarked: isBookmarked ?? this.isBookmarked,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
+      isFromCache: isFromCache ?? this.isFromCache,
     );
   }
 }
@@ -181,8 +183,12 @@ class MovieDetailsLoaded extends MoviesTabState {
 class BookmarkedMoviesLoaded extends MoviesTabState {
   final List<Movie> movies;
 
-  const BookmarkedMoviesLoaded(this.movies, {super.isLoading, super.error})
-    : super(tab: MovieTab.bookmarks);
+  const BookmarkedMoviesLoaded(
+    this.movies, {
+    super.isLoading,
+    super.error,
+    super.isFromCache,
+  }) : super(tab: MovieTab.bookmarks);
 
   @override
   List<Object?> get props => [...super.props, movies];
@@ -198,6 +204,7 @@ class BookmarkedMoviesLoaded extends MoviesTabState {
       movies ?? this.movies,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
+      isFromCache: isFromCache ?? this.isFromCache,
     );
   }
 }

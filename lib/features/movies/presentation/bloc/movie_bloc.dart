@@ -35,6 +35,7 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     on<SearchMoviesEvent>(_onSearchMovies);
     on<ExecuteSearchEvent>(_onExecuteSearch);
     on<LoadMovieDetailsEvent>(_onLoadMovieDetails);
+    on<PrimeMovieDetailsEvent>(_onPrimeMovieDetails);
     on<BookmarkMovieEvent>(_onBookmarkMovie);
     on<RemoveBookmarkEvent>(_onRemoveBookmark);
     on<LoadBookmarkedMoviesEvent>(_onLoadBookmarkedMovies);
@@ -68,6 +69,38 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     }
   }
 
+  void _onPrimeMovieDetails(
+    PrimeMovieDetailsEvent event,
+    Emitter<MovieState> emit,
+  ) {
+    _detailsState = MovieDetailsLoaded(
+      event.movie,
+      isBookmarked: false,
+      isFromCache: true,
+    );
+    emit(_detailsState!);
+  }
+
+  void emitCachedStateIfAvailable(MovieTab tab, Emitter<MovieState> emit) {
+    switch (tab) {
+      case MovieTab.trending:
+        if (_trendingState != null) emit(_trendingState!);
+        break;
+      case MovieTab.nowPlaying:
+        if (_nowPlayingState != null) emit(_nowPlayingState!);
+        break;
+      case MovieTab.bookmarks:
+        if (_bookmarksState != null) emit(_bookmarksState!);
+        break;
+      case MovieTab.search:
+        if (_searchState != null) emit(_searchState!);
+        break;
+      case MovieTab.details:
+        if (_detailsState != null) emit(_detailsState!);
+        break;
+    }
+  }
+
   Future<void> _onLoadTrendingMovies(
     LoadTrendingMoviesEvent event,
     Emitter<MovieState> emit,
@@ -82,11 +115,22 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     final result = await getTrendingMovies();
     result.fold(
       (failure) {
-        final state = MovieError(failure.message, MovieTab.trending);
-        emit(state);
+        emitCachedStateIfAvailable(MovieTab.trending, emit);
+        emit(MovieError(failure.message, MovieTab.trending));
       },
       (movies) {
-        _trendingState = TrendingMoviesLoaded(movies);
+        // ignore: unnecessary_type_check
+        final bool isFromCache = !(movies is List && movies.isNotEmpty);
+
+        if (movies.isEmpty && _trendingState != null) {
+          emit(_trendingState!);
+          return;
+        }
+        _trendingState = TrendingMoviesLoaded(
+          movies,
+          isFromCache: isFromCache,
+          isLoading: false,
+        );
         emit(_trendingState!);
       },
     );
@@ -106,11 +150,22 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     final result = await getNowPlayingMovies();
     result.fold(
       (failure) {
-        final state = MovieError(failure.message, MovieTab.nowPlaying);
-        emit(state);
+        emitCachedStateIfAvailable(MovieTab.nowPlaying, emit);
+        emit(MovieError(failure.message, MovieTab.nowPlaying));
       },
       (movies) {
-        _nowPlayingState = NowPlayingMoviesLoaded(movies);
+        // ignore: unnecessary_type_check
+        final bool isFromCache = !(movies is List && movies.isNotEmpty);
+
+        if (movies.isEmpty && _nowPlayingState != null) {
+          emit(_nowPlayingState!);
+          return;
+        }
+        _nowPlayingState = NowPlayingMoviesLoaded(
+          movies,
+          isFromCache: isFromCache,
+          isLoading: false,
+        );
         emit(_nowPlayingState!);
       },
     );
@@ -139,10 +194,7 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
   ) async {
     final currentCache = _searchState;
     if (currentCache != null) {
-      _searchState = currentCache.copyWith(
-        isLoading: true,
-        query: event.query,
-      );
+      _searchState = currentCache.copyWith(isLoading: true, query: event.query);
       emit(_searchState!);
     } else {
       emit(MovieLoading(MovieTab.search));
@@ -167,8 +219,9 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     Emitter<MovieState> emit,
   ) async {
     try {
-      if (_detailsState != null) {
-        _detailsState = _detailsState!.copyWith(isLoading: true);
+      final existing = _detailsState;
+      if (existing != null && existing.movie.id == event.movieId) {
+        _detailsState = existing.copyWith(isLoading: true);
         emit(_detailsState!);
       } else {
         emit(MovieLoading(MovieTab.details));
@@ -224,7 +277,10 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
         bookmarksResult.fold(
           (failure) => emit(MovieError(failure.message, MovieTab.bookmarks)),
           (movies) {
-            _bookmarksState = BookmarkedMoviesLoaded(movies);
+            _bookmarksState = BookmarkedMoviesLoaded(
+              movies,
+              isFromCache: false,
+            );
             emit(_bookmarksState!);
           },
         );
@@ -272,7 +328,10 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
         bookmarksResult.fold(
           (failure) => emit(MovieError(failure.message, MovieTab.bookmarks)),
           (movies) {
-            _bookmarksState = BookmarkedMoviesLoaded(movies);
+            _bookmarksState = BookmarkedMoviesLoaded(
+              movies,
+              isFromCache: false,
+            );
             emit(_bookmarksState!);
           },
         );
@@ -312,9 +371,12 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
 
     final result = await getBookmarkedMovies();
     result.fold(
-      (failure) => emit(MovieError(failure.message, MovieTab.bookmarks)),
+      (failure) {
+        emitCachedStateIfAvailable(MovieTab.bookmarks, emit);
+        emit(MovieError(failure.message, MovieTab.bookmarks));
+      },
       (movies) {
-        _bookmarksState = BookmarkedMoviesLoaded(movies);
+        _bookmarksState = BookmarkedMoviesLoaded(movies, isFromCache: false);
         emit(_bookmarksState!);
       },
     );

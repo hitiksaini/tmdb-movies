@@ -10,9 +10,9 @@ import '../bloc/movie_event.dart';
 import '../bloc/movie_state.dart';
 
 class MovieDetailsPage extends StatefulWidget {
-  final int movieId;
+  final Movie movie;
 
-  const MovieDetailsPage({super.key, required this.movieId});
+  const MovieDetailsPage({super.key, required this.movie});
 
   @override
   State<MovieDetailsPage> createState() => _MovieDetailsPageState();
@@ -24,8 +24,9 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
     super.initState();
     final bloc = context.read<MovieBloc>();
     final cachedDetails = bloc.detailsState;
-    if (cachedDetails == null || cachedDetails.movie.id != widget.movieId) {
-      bloc.add(LoadMovieDetailsEvent(widget.movieId));
+    if (cachedDetails == null || cachedDetails.movie.id != widget.movie.id) {
+      bloc.add(PrimeMovieDetailsEvent(widget.movie));
+      bloc.add(LoadMovieDetailsEvent(widget.movie.id));
     }
   }
 
@@ -56,7 +57,7 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
         builder: (context, state) {
           final bloc = context.read<MovieBloc>();
           MovieDetailsLoaded? cachedState = bloc.detailsState;
-          if (cachedState != null && cachedState.movie.id != widget.movieId) {
+          if (cachedState != null && cachedState.movie.id != widget.movie.id) {
             cachedState = null;
           }
           final isLoading =
@@ -258,7 +259,7 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
                   ElevatedButton(
                     onPressed: () {
                       context.read<MovieBloc>().add(
-                        LoadMovieDetailsEvent(widget.movieId),
+                        LoadMovieDetailsEvent(widget.movie.id),
                       );
                     },
                     child: const Text('Retry'),
@@ -274,7 +275,7 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
 
           WidgetsBinding.instance.addPostFrameCallback((_) {
             context.read<MovieBloc>().add(
-              LoadMovieDetailsEvent(widget.movieId),
+              LoadMovieDetailsEvent(widget.movie.id),
             );
           });
 
