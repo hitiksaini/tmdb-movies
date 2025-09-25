@@ -5,6 +5,6 @@ Tmdb Movies app built with Flutter using the TMDB API. Features include:
 - Movie detail view with sharing support
 - Bookmarks persisted locally
 - Search with debounce and offline fallback
-- Deep links (`tmdbmovies://movie/<id>`) that open the app directly to a movie detaiL page
+- Deep links (`tmdbmovies://movie/<id>`) that open the app directly to a movie detail page
 
 ~ Hitik

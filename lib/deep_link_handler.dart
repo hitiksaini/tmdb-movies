@@ -3,7 +3,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:uni_links/uni_links.dart';
+import 'package:app_links/app_links.dart';
 import 'features/movies/presentation/bloc/movie_bloc.dart';
 import 'features/movies/presentation/bloc/movie_event.dart';
 import 'features/movies/presentation/pages/movie_details_page.dart';
@@ -25,7 +25,8 @@ class DeepLinkHandler extends StatefulWidget {
 }
 
 class _DeepLinkHandlerState extends State<DeepLinkHandler> {
-  StreamSubscription<Uri?>? _linkSubscription;
+  StreamSubscription<Uri>? _linkSubscription;
+  late final AppLinks _appLinks;
 
   @override
   void initState() {
@@ -34,8 +35,10 @@ class _DeepLinkHandlerState extends State<DeepLinkHandler> {
   }
 
   Future<void> _initDeepLinks() async {
+    _appLinks = AppLinks();
+
     try {
-      final initialUri = await getInitialUri();
+      final initialUri = await _appLinks.getInitialAppLink();
       if (!mounted) return;
       if (initialUri != null) {
         _handleUri(initialUri);
@@ -43,11 +46,10 @@ class _DeepLinkHandlerState extends State<DeepLinkHandler> {
     } on PlatformException {}
 
     _linkSubscription?.cancel();
-    _linkSubscription = uriLinkStream.listen((uri) {
-      if (uri != null) {
-        _handleUri(uri);
-      }
-    }, onError: (_) {});
+    _linkSubscription = _appLinks.uriLinkStream.listen(
+      (uri) => _handleUri(uri),
+      onError: (_) {},
+    );
   }
 
   void _handleUri(Uri uri) {

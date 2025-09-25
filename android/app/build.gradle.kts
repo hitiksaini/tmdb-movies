@@ -1,3 +1,6 @@
+android {
+    namespace = "com.example.tmdb_movies"
+}
 plugins {
     id("com.android.application")
     id("kotlin-android")
