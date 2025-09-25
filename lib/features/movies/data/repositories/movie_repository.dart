@@ -152,12 +152,19 @@ class MovieRepository implements IMovieRepository {
     try {
       if (await networkInfo.isConnected) {
         final movie = await remoteDataSource.getMovieDetails(movieId);
+        await localDataSource.cacheMovieDetails(movie);
         return Right(movie.toEntity());
       } else {
+        final cached = await localDataSource.getCachedMovieDetails(movieId);
+        if (cached != null) {
+          return Right(cached.toEntity());
+        }
         return const Left(NetworkFailure('No internet connection'));
       }
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
+    } on CacheException catch (e) {
+      return Left(CacheFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

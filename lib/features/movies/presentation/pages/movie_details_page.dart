@@ -10,9 +10,14 @@ import '../bloc/movie_event.dart';
 import '../bloc/movie_state.dart';
 
 class MovieDetailsPage extends StatefulWidget {
-  final Movie movie;
+  final Movie? movie;
+  final int? movieId;
 
-  const MovieDetailsPage({super.key, required this.movie});
+  const MovieDetailsPage({
+    super.key,
+    this.movie,
+    this.movieId,
+  });
 
   @override
   State<MovieDetailsPage> createState() => _MovieDetailsPageState();
@@ -23,10 +28,16 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
   void initState() {
     super.initState();
     final bloc = context.read<MovieBloc>();
-    final cachedDetails = bloc.detailsState;
-    if (cachedDetails == null || cachedDetails.movie.id != widget.movie.id) {
-      bloc.add(PrimeMovieDetailsEvent(widget.movie));
-      bloc.add(LoadMovieDetailsEvent(widget.movie.id));
+    if (widget.movie != null) {
+      bloc.add(LoadMovieDetailsEvent(widget.movie!));
+    } else if (widget.movieId != null) {
+      final placeholder = Movie.placeholder(widget.movieId!);
+      bloc.add(LoadMovieDetailsEvent(placeholder));
+    }
+
+    final id = widget.movie?.id ?? widget.movieId;
+    if (id != null) {
+      bloc.add(LoadMovieDetailsByIdEvent(id));
     }
   }
 
@@ -57,7 +68,10 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
         builder: (context, state) {
           final bloc = context.read<MovieBloc>();
           MovieDetailsLoaded? cachedState = bloc.detailsState;
-          if (cachedState != null && cachedState.movie.id != widget.movie.id) {
+          final requestedId = widget.movie?.id ?? widget.movieId;
+          if (requestedId != null &&
+              cachedState != null &&
+              cachedState.movie.id != requestedId) {
             cachedState = null;
           }
           final isLoading =
@@ -259,7 +273,9 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
                   ElevatedButton(
                     onPressed: () {
                       context.read<MovieBloc>().add(
-                        LoadMovieDetailsEvent(widget.movie.id),
+                        LoadMovieDetailsByIdEvent(
+                          widget.movie?.id ?? widget.movieId!,
+                        ),
                       );
                     },
                     child: const Text('Retry'),
@@ -274,9 +290,10 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
           }
 
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.read<MovieBloc>().add(
-              LoadMovieDetailsEvent(widget.movie.id),
-            );
+            final id = widget.movie?.id ?? widget.movieId;
+            if (id != null) {
+              context.read<MovieBloc>().add(LoadMovieDetailsByIdEvent(id));
+            }
           });
 
           return const Center(child: CircularProgressIndicator());

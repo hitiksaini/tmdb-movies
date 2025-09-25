@@ -5,4 +5,5 @@ class AppConstants {
 
   static const String movieBoxName = 'movies';
   static const String bookmarkBoxName = 'bookmarks';
+  static const String detailsBoxName = 'movie_details';
 }

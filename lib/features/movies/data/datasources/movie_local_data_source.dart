@@ -12,11 +12,14 @@ abstract class MovieLocalDataSource {
   Future<bool> isMovieBookmarked(int movieId);
   Future<void> clearCache();
   Future<List<MovieModel>> searchLocalMovies(String query);
+  Future<void> cacheMovieDetails(MovieModel movie);
+  Future<MovieModel?> getCachedMovieDetails(int movieId);
 }
 
 class MovieLocalDataSourceImpl implements MovieLocalDataSource {
   final Box movieBox = Hive.box(AppConstants.movieBoxName);
   final Box bookmarkBox = Hive.box(AppConstants.bookmarkBoxName);
+  late final Box detailsBox = Hive.box(AppConstants.detailsBoxName);
 
   @override
   Future<void> cacheMovies(String key, List<MovieModel> movies) async {
@@ -144,6 +147,26 @@ class MovieLocalDataSourceImpl implements MovieLocalDataSource {
       return uniqueResults;
     } catch (e) {
       throw CacheException('Failed to search local movies: $e');
+    }
+  }
+
+  @override
+  Future<void> cacheMovieDetails(MovieModel movie) async {
+    try {
+      await detailsBox.put(movie.id, movie.toJson());
+    } catch (e) {
+      throw CacheException('Failed to cache movie details: $e');
+    }
+  }
+
+  @override
+  Future<MovieModel?> getCachedMovieDetails(int movieId) async {
+    try {
+      final data = detailsBox.get(movieId);
+      if (data == null) return null;
+      return MovieModel.fromJson(Map<String, dynamic>.from(data));
+    } catch (e) {
+      throw CacheException('Failed to get cached movie details: $e');
     }
   }
 }

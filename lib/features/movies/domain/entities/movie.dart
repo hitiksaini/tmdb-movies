@@ -33,6 +33,23 @@ class Movie extends Equatable {
     required this.video,
   });
 
+  factory Movie.placeholder(int id) => Movie(
+    id: id,
+    title: 'Loading...',
+    overview: null,
+    posterPath: null,
+    backdropPath: null,
+    releaseDate: null,
+    voteAverage: 0,
+    voteCount: 0,
+    genreIds: const [],
+    adult: false,
+    originalLanguage: 'en',
+    originalTitle: 'Loading...',
+    popularity: 0,
+    video: false,
+  );
+
   @override
   List<Object?> get props => [
     id,

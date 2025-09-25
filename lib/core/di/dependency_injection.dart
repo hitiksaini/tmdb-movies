@@ -1,6 +1,6 @@
-import 'package:get_it/get_it.dart';
-import 'package:dio/dio.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hive/hive.dart';
 import '../../features/movies/data/datasources/movie_local_data_source.dart';
 import '../../features/movies/data/datasources/movie_remote_data_source.dart';
@@ -31,6 +31,7 @@ Future<void> setupDependencyInjection() async {
   // Hive boxes
   await Hive.openBox(AppConstants.movieBoxName);
   await Hive.openBox(AppConstants.bookmarkBoxName);
+  await Hive.openBox(AppConstants.detailsBoxName);
 
   // Data sources
   getIt.registerLazySingleton<MovieRemoteDataSource>(

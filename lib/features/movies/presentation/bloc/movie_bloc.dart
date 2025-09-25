@@ -34,8 +34,8 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     on<LoadNowPlayingMoviesEvent>(_onLoadNowPlayingMovies);
     on<SearchMoviesEvent>(_onSearchMovies);
     on<ExecuteSearchEvent>(_onExecuteSearch);
+    on<LoadMovieDetailsByIdEvent>(_onLoadMovieDetailsById);
     on<LoadMovieDetailsEvent>(_onLoadMovieDetails);
-    on<PrimeMovieDetailsEvent>(_onPrimeMovieDetails);
     on<BookmarkMovieEvent>(_onBookmarkMovie);
     on<RemoveBookmarkEvent>(_onRemoveBookmark);
     on<LoadBookmarkedMoviesEvent>(_onLoadBookmarkedMovies);
@@ -69,8 +69,8 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     }
   }
 
-  void _onPrimeMovieDetails(
-    PrimeMovieDetailsEvent event,
+  void _onLoadMovieDetails(
+    LoadMovieDetailsEvent event,
     Emitter<MovieState> emit,
   ) {
     _detailsState = MovieDetailsLoaded(
@@ -214,8 +214,8 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     }
   }
 
-  Future<void> _onLoadMovieDetails(
-    LoadMovieDetailsEvent event,
+  Future<void> _onLoadMovieDetailsById(
+    LoadMovieDetailsByIdEvent event,
     Emitter<MovieState> emit,
   ) async {
     try {

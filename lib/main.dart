@@ -5,6 +5,7 @@ import 'package:tmdb_movies/features/home/home_page.dart';
 import 'core/di/dependency_injection.dart';
 import 'core/network/network_bloc.dart';
 import 'features/movies/presentation/bloc/movie_bloc.dart';
+import 'deep_link_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,17 +14,41 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  late final MovieBloc _movieBloc;
+  late final NetworkBloc _networkBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    _movieBloc = getIt<MovieBloc>();
+    _networkBloc = getIt<NetworkBloc>();
+  }
+
+  @override
+  void dispose() {
+    _movieBloc.close();
+    _networkBloc.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<MovieBloc>(create: (context) => getIt<MovieBloc>()),
-        BlocProvider<NetworkBloc>(create: (context) => getIt<NetworkBloc>()),
+        BlocProvider<MovieBloc>.value(value: _movieBloc),
+        BlocProvider<NetworkBloc>.value(value: _networkBloc),
       ],
       child: MaterialApp(
+        navigatorKey: _navigatorKey,
         title: 'TmDB Movies - Hitik',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -41,7 +66,11 @@ class MyApp extends StatelessWidget {
             unselectedItemColor: Colors.grey,
           ),
         ),
-        home: const HomePage(),
+        home: DeepLinkHandler(
+          navigatorKey: _navigatorKey,
+          movieBloc: _movieBloc,
+          child: const HomePage(),
+        ),
       ),
     );
   }

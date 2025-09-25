@@ -1,16 +1,10 @@
 # tmdb_movies
 
-A new Flutter project.
+Tmdb Movies app built with Flutter using the TMDB API. Features include:
+- Trending & now-playing feeds with offline caching via Hive
+- Movie detail view with sharing support
+- Bookmarks persisted locally
+- Search with debounce and offline fallback
+- Deep links (`tmdbmovies://movie/<id>`) that open the app directly to a movie detaiL page
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+~ Hitik

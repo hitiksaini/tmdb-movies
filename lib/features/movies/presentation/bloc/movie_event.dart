@@ -30,19 +30,19 @@ class ExecuteSearchEvent extends MovieEvent {
   List<Object?> get props => [query];
 }
 
-class LoadMovieDetailsEvent extends MovieEvent {
+class LoadMovieDetailsByIdEvent extends MovieEvent {
   final int movieId;
 
-  const LoadMovieDetailsEvent(this.movieId);
+  const LoadMovieDetailsByIdEvent(this.movieId);
 
   @override
   List<Object?> get props => [movieId];
 }
 
-class PrimeMovieDetailsEvent extends MovieEvent {
+class LoadMovieDetailsEvent extends MovieEvent {
   final Movie movie;
 
-  const PrimeMovieDetailsEvent(this.movie);
+  const LoadMovieDetailsEvent(this.movie);
 
   @override
   List<Object?> get props => [movie];

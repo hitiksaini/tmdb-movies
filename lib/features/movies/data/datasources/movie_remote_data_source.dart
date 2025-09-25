@@ -44,8 +44,7 @@ abstract class MovieApiService {
 class MovieRemoteDataSourceImpl implements MovieRemoteDataSource {
   final MovieApiService apiService;
 
-  MovieRemoteDataSourceImpl(Dio dio) 
-      : apiService = MovieApiService(dio);
+  MovieRemoteDataSourceImpl(Dio dio) : apiService = MovieApiService(dio);
 
   @override
   Future<List<MovieModel>> getTrendingMovies() async {
@@ -62,7 +61,9 @@ class MovieRemoteDataSourceImpl implements MovieRemoteDataSource {
   @override
   Future<List<MovieModel>> getNowPlayingMovies() async {
     try {
-      final response = await apiService.getNowPlayingMovies(ApiConstants.apiKey);
+      final response = await apiService.getNowPlayingMovies(
+        ApiConstants.apiKey,
+      );
       return response.results;
     } on DioException catch (e) {
       throw ServerException(e.message ?? 'Server error occurred');
@@ -74,7 +75,10 @@ class MovieRemoteDataSourceImpl implements MovieRemoteDataSource {
   @override
   Future<List<MovieModel>> searchMovies(String query) async {
     try {
-      final response = await apiService.searchMovies(ApiConstants.apiKey, query);
+      final response = await apiService.searchMovies(
+        ApiConstants.apiKey,
+        query,
+      );
       return response.results;
     } on DioException catch (e) {
       throw ServerException(e.message ?? 'Server error occurred');
