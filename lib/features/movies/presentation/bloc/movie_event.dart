@@ -21,6 +21,15 @@ class SearchMoviesEvent extends MovieEvent {
   List<Object?> get props => [query];
 }
 
+class ExecuteSearchEvent extends MovieEvent {
+  final String query;
+
+  const ExecuteSearchEvent(this.query);
+
+  @override
+  List<Object?> get props => [query];
+}
+
 class LoadMovieDetailsEvent extends MovieEvent {
   final int movieId;
 

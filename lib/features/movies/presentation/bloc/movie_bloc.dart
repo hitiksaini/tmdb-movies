@@ -33,6 +33,7 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     on<LoadTrendingMoviesEvent>(_onLoadTrendingMovies);
     on<LoadNowPlayingMoviesEvent>(_onLoadNowPlayingMovies);
     on<SearchMoviesEvent>(_onSearchMovies);
+    on<ExecuteSearchEvent>(_onExecuteSearch);
     on<LoadMovieDetailsEvent>(_onLoadMovieDetails);
     on<BookmarkMovieEvent>(_onBookmarkMovie);
     on<RemoveBookmarkEvent>(_onRemoveBookmark);
@@ -122,38 +123,43 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     _debounceTimer?.cancel();
 
     if (event.query.isEmpty) {
-      emit(SearchCleared());
       _searchState = null;
+      emit(SearchCleared());
       return;
     }
 
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
-      if (!emit.isDone) {
-        if (_searchState != null) {
-          _searchState = _searchState!.copyWith(
-            isLoading: true,
-            query: event.query,
-          );
-          emit(_searchState!);
-        } else {
-          emit(MovieLoading(MovieTab.search));
-        }
-
-        final result = await searchMovies(event.query);
-        if (!emit.isDone) {
-          result.fold(
-            (failure) {
-              final state = MovieError(failure.message, MovieTab.search);
-              emit(state);
-            },
-            (movies) {
-              _searchState = SearchMoviesLoaded(movies, event.query);
-              emit(_searchState!);
-            },
-          );
-        }
-      }
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      add(ExecuteSearchEvent(event.query));
     });
+  }
+
+  Future<void> _onExecuteSearch(
+    ExecuteSearchEvent event,
+    Emitter<MovieState> emit,
+  ) async {
+    final currentCache = _searchState;
+    if (currentCache != null) {
+      _searchState = currentCache.copyWith(
+        isLoading: true,
+        query: event.query,
+      );
+      emit(_searchState!);
+    } else {
+      emit(MovieLoading(MovieTab.search));
+    }
+
+    final result = await searchMovies(event.query);
+    if (!emit.isDone) {
+      result.fold(
+        (failure) {
+          emit(MovieError(failure.message, MovieTab.search));
+        },
+        (movies) {
+          _searchState = SearchMoviesLoaded(movies, event.query);
+          emit(_searchState!);
+        },
+      );
+    }
   }
 
   Future<void> _onLoadMovieDetails(

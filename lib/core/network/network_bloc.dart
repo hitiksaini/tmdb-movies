@@ -45,3 +45,4 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
     return super.close();
   }
 }
+
